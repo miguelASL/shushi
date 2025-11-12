@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Contador de Sushi</title>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-20px); }
+        }
+        @keyframes wiggle {
+            0%, 100% { transform: rotate(-3deg); }
+            50% { transform: rotate(3deg); }
+        }
+        @keyframes pop {
+            0% { transform: scale(0); opacity: 0; }
+            50% { transform: scale(1.2); }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-10px); }
+            75% { transform: translateX(10px); }
+        }
+        @keyframes rainbow {
+            0% { filter: hue-rotate(0deg); }
+            100% { filter: hue-rotate(360deg); }
+        }
+        .animate-pulse { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+        .animate-float { animation: float 3s ease-in-out infinite; }
+        .animate-wiggle { animation: wiggle 1s ease-in-out infinite; }
+        .animate-pop { animation: pop 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55); }
+        .animate-shake { animation: shake 0.5s ease-in-out; }
+        .animate-rainbow { animation: rainbow 3s linear infinite; }
+        .delay-100 { animation-delay: 0.1s; }
+        .delay-200 { animation-delay: 0.2s; }
+        .delay-300 { animation-delay: 0.3s; }
+        .delay-400 { animation-delay: 0.4s; }
+        
+        .particle {
+            position: absolute;
+            pointer-events: none;
+            animation: particle-float 2s ease-out forwards;
+        }
+        
+        @keyframes particle-float {
+            0% {
+                transform: translateY(0) scale(1);
+                opacity: 1;
+            }
+            100% {
+                transform: translateY(-100px) scale(0);
+                opacity: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        // Componente Sparkles simplificado
+        const Sparkles = ({ className, size = 24 }) => (
+            <svg 
+                className={className}
+                width={size} 
+                height={size} 
+                viewBox="0 0 24 24" 
+                fill="none" 
+                stroke="currentColor" 
+                strokeWidth="2"
+            >
+                <path d="M12 3v18M3 12h18M5.6 5.6l12.8 12.8M18.4 5.6L5.6 18.4" />
+            </svg>
+        );
+
+        // Componente de partículas flotantes
+        const FloatingEmoji = ({ emoji, delay }) => (
+            <div 
+                className="absolute text-4xl animate-float opacity-70"
+                style={{ 
+                    animationDelay: `${delay}s`,
+                    left: `${Math.random() * 80 + 10}%`,
+                    top: `${Math.random() * 80 + 10}%`
+                }}
+            >
+                {emoji}
+            </div>
+        );
+
+        function SushiCounter() {
+            const [count, setCount] = useState(0);
+            const [isHappy, setIsHappy] = useState(false);
+            const [isFinished, setIsFinished] = useState(false);
+            const [showSparkle, setShowSparkle] = useState(false);
+            const [isJumping, setIsJumping] = useState(false);
+            const [particles, setParticles] = useState([]);
+
+            const handleCount = () => {
+                setCount(count + 1);
+                setIsHappy(true);
+                setShowSparkle(true);
+                setIsJumping(true);
+                
+                // Crear partículas
+                const newParticles = ['✨', '⭐', '💫', '🌟'].map((emoji, i) => ({
+                    id: Date.now() + i,
+                    emoji,
+                    x: Math.random() * 100 - 50,
+                    y: Math.random() * 100 - 50
+                }));
+                setParticles(prev => [...prev, ...newParticles]);
+                
+                setTimeout(() => {
+                    setIsHappy(false);
+                    setIsJumping(false);
+                }, 500);
+                
+                setTimeout(() => {
+                    setShowSparkle(false);
+                }, 800);
+                
+                setTimeout(() => {
+                    setParticles(prev => prev.filter(p => p.id < Date.now() - 2000));
+                }, 2000);
+            };
+
+            const handleFinish = () => {
+                setIsFinished(true);
+            };
+
+            const handleReset = () => {
+                setCount(0);
+                setIsFinished(false);
+                setIsHappy(false);
+                setParticles([]);
+            };
+
+            if (isFinished) {
+                return (
+                    <div className="min-h-screen bg-gradient-to-br from-red-50 via-pink-100 to-orange-50 flex items-center justify-center p-4 relative overflow-hidden">
+                        {/* Confeti de fondo */}
+                        {[...Array(20)].map((_, i) => (
+                            <FloatingEmoji key={i} emoji={['🍣', '🍱', '🥢', '🍶'][i % 4]} delay={i * 0.2} />
+                        ))}
+                        
+                        <div className="text-center relative z-10">
+                            <div className="text-8xl mb-6 animate-bounce">🍣</div>
+                            <h1 className="text-5xl font-bold text-gray-800 mb-4 animate-wiggle">
+                                ¡Qué rico!
+                            </h1>
+                            <div className="relative inline-block">
+                                <p className="text-8xl font-bold text-red-500 mb-4 animate-pulse">{count}</p>
+                                {count >= 20 && (
+                                    <div className="absolute -top-4 -right-4 text-4xl animate-bounce">🏆</div>
+                                )}
+                            </div>
+                            <p className="text-3xl text-gray-600 mb-8 animate-pop">
+                                {count === 1 ? 'pieza de sushi' : 'piezas de sushi'} comidas
+                            </p>
+                            <button
+                                onClick={handleReset}
+                                className="bg-gradient-to-r from-red-500 to-orange-500 hover:from-red-600 hover:to-orange-600 text-white font-bold py-4 px-8 rounded-full text-2xl transition-all transform hover:scale-110 active:scale-95 shadow-2xl animate-pop"
+                            >
+                                Comer más sushi 🍱
+                            </button>
+                        </div>
+                    </div>
+                );
+            }
+
+            return (
+                <div className="min-h-screen bg-gradient-to-br from-pink-50 via-red-50 to-orange-50 flex flex-col items-center justify-center p-4 relative overflow-hidden">
+                    {/* Partículas decorativas animadas */}
+                    <div className="absolute top-10 left-10 text-5xl animate-float">🍱</div>
+                    <div className="absolute top-20 right-20 text-4xl animate-float delay-100">🥢</div>
+                    <div className="absolute bottom-20 left-20 text-4xl animate-float delay-200">🍶</div>
+                    <div className="absolute bottom-10 right-10 text-5xl animate-float delay-300">🍣</div>
+                    <div className="absolute top-1/2 left-5 text-3xl animate-wiggle delay-100">🌸</div>
+                    <div className="absolute top-1/3 right-10 text-3xl animate-wiggle delay-200">🎌</div>
+
+                    {/* Partículas dinámicas */}
+                    {particles.map(particle => (
+                        <div
+                            key={particle.id}
+                            className="particle text-2xl"
+                            style={{
+                                left: '50%',
+                                top: '40%',
+                                transform: `translate(${particle.x}px, ${particle.y}px)`
+                            }}
+                        >
+                            {particle.emoji}
+                        </div>
+                    ))}
+
+                    {/* Contador con efecto */}
+                    <div className="text-center mb-8 animate-pop">
+                        <h2 className="text-3xl font-bold text-gray-700 mb-2">Sushi comidos</h2>
+                        <div className={`text-8xl font-bold bg-gradient-to-r from-red-500 to-orange-500 bg-clip-text text-transparent ${
+                            count >= 20 ? 'animate-rainbow' : ''
+                        }`}>
+                            {count}
+                        </div>
+                    </div>
+
+                    {/* Sushi animado mejorado */}
+                    <div className="relative mb-12">
+                        {/* Sparkles cuando come */}
+                        {showSparkle && (
+                            <>
+                                <Sparkles className="absolute -top-6 -left-6 text-yellow-400 animate-ping" size={40} />
+                                <Sparkles className="absolute -top-6 -right-6 text-yellow-400 animate-ping" size={40} />
+                                <Sparkles className="absolute -bottom-6 -left-6 text-yellow-400 animate-ping" size={40} />
+                                <Sparkles className="absolute -bottom-6 -right-6 text-yellow-400 animate-ping" size={40} />
+                                <Sparkles className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-pink-400 animate-ping" size={50} />
+                            </>
+                        )}
+                        
+                        {/* Sushi cartoon mejorado */}
+                        <div 
+                            className={`relative transition-all duration-300 ${
+                                isHappy ? 'scale-125 rotate-12' : 'scale-100'
+                            } ${isJumping ? 'animate-shake' : ''}`}
+                            style={{
+                                filter: isHappy ? 'drop-shadow(0 0 20px rgba(255, 200, 0, 0.8))' : 'drop-shadow(0 10px 20px rgba(0, 0, 0, 0.3))'
+                            }}
+                        >
+                            {/* Sombra dinámica */}
+                            <div className={`absolute -bottom-4 left-1/2 transform -translate-x-1/2 w-40 h-8 bg-black/20 rounded-full blur-md transition-all ${
+                                isHappy ? 'scale-75 opacity-50' : 'scale-100 opacity-100'
+                            }`}></div>
+                            
+                            {/* Cuerpo del sushi */}
+                            <div className="w-52 h-36 bg-gradient-to-r from-orange-400 via-red-400 to-orange-400 rounded-full relative shadow-2xl border-4 border-orange-600">
+                                {/* Arroz con textura */}
+                                <div className="absolute bottom-0 w-full h-20 bg-gradient-to-b from-white to-gray-100 rounded-b-full border-t-4 border-orange-600"></div>
+                                
+                                {/* Alga nori con más detalle - MOVIDO ANTES DE LOS OJOS */}
+                                <div className="absolute top-1/2 transform -translate-y-1/2 w-full h-10 bg-gradient-to-r from-gray-800 via-gray-900 to-gray-800 border-y-2 border-black z-0"></div>
+                                
+                                {/* Brillos en el pescado */}
+                                <div className="absolute top-4 left-8 w-8 h-6 bg-white/40 rounded-full blur-sm z-10"></div>
+                                <div className="absolute top-6 right-12 w-6 h-4 bg-white/30 rounded-full blur-sm z-10"></div>
+                                
+                                {/* Ojos más grandes y expresivos - CON Z-INDEX MAYOR */}
+                                <div className={`absolute ${isHappy ? 'top-6' : 'top-10'} left-10 w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-lg border-2 border-gray-800 transition-all z-20`}>
+                                    <div className={`w-6 h-6 bg-black rounded-full transition-all ${
+                                        isHappy ? 'scale-150 -translate-y-1' : ''
+                                    }`}>
+                                        <div className="w-2 h-2 bg-white rounded-full ml-1 mt-1"></div>
+                                    </div>
+                                </div>
+                                <div className={`absolute ${isHappy ? 'top-6' : 'top-10'} right-10 w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-lg border-2 border-gray-800 transition-all z-20`}>
+                                    <div className={`w-6 h-6 bg-black rounded-full transition-all ${
+                                        isHappy ? 'scale-150 -translate-y-1' : ''
+                                    }`}>
+                                        <div className="w-2 h-2 bg-white rounded-full ml-1 mt-1"></div>
+                                    </div>
+                                </div>
+                                
+                                {/* Cejas expresivas - CON Z-INDEX MAYOR */}
+                                {isHappy && (
+                                    <>
+                                        <div className="absolute top-4 left-8 w-10 h-2 bg-black rounded-full transform -rotate-12 z-20"></div>
+                                        <div className="absolute top-4 right-8 w-10 h-2 bg-black rounded-full transform rotate-12 z-20"></div>
+                                    </>
+                                )}
+                                
+                                {/* Boca más expresiva - CON Z-INDEX MAYOR */}
+                                <div className={`absolute bottom-8 left-1/2 transform -translate-x-1/2 transition-all z-20 ${
+                                    isHappy 
+                                        ? 'w-20 h-10 border-4 border-black rounded-t-full border-b-0' 
+                                        : 'w-14 h-2 bg-black rounded-full'
+                                }`}>
+                                    {isHappy && (
+                                        <>
+                                            <div className="absolute bottom-0 left-2 w-3 h-3 bg-red-400 rounded-full"></div>
+                                            <div className="w-2 h-2 bg-white rounded-full absolute left-4 bottom-2"></div>
+                                            <div className="w-2 h-2 bg-white rounded-full absolute right-4 bottom-2"></div>
+                                        </>
+                                    )}
+                                </div>
+                                
+                                {/* Mejillas más grandes - CON Z-INDEX MAYOR */}
+                                {isHappy && (
+                                    <>
+                                        <div className="absolute top-16 left-4 w-8 h-8 bg-pink-400 rounded-full opacity-70 animate-pulse z-20"></div>
+                                        <div className="absolute top-16 right-4 w-8 h-8 bg-pink-400 rounded-full opacity-70 animate-pulse z-20"></div>
+                                    </>
+                                )}
+                                
+                                {/* Brazos cuando está feliz - CON Z-INDEX MAYOR */}
+                                {isHappy && (
+                                    <>
+                                        <div className="absolute top-16 -left-8 w-12 h-4 bg-orange-400 rounded-full transform -rotate-45 origin-right z-20"></div>
+                                        <div className="absolute top-16 -right-8 w-12 h-4 bg-orange-400 rounded-full transform rotate-45 origin-left z-20"></div>
+                                    </>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Botones mejorados */}
+                    <div className="flex flex-col gap-4">
+                        <button
+                            onClick={handleCount}
+                            className="bg-gradient-to-r from-red-500 via-pink-500 to-red-500 hover:from-red-600 hover:via-pink-600 hover:to-red-600 text-white font-bold py-6 px-14 rounded-full text-2xl transition-all transform hover:scale-110 active:scale-95 shadow-2xl border-4 border-red-600 hover:shadow-pink-500/50 animate-pop"
+                        >
+                            ¡Comer Sushi! 🍣
+                        </button>
+                        
+                        {count > 0 && (
+                            <button
+                                onClick={handleFinish}
+                                className="bg-gradient-to-r from-gray-600 to-gray-700 hover:from-gray-700 hover:to-gray-800 text-white font-bold py-4 px-12 rounded-full text-xl transition-all transform hover:scale-105 shadow-lg animate-pop"
+                            >
+                                Ya estoy lleno 😋
+                            </button>
+                        )}
+                    </div>
+
+                    {/* Mensaje motivador mejorado */}
+                    {count > 0 && (
+                        <div className="mt-8 text-center animate-pop">
+                            <div className="bg-white/80 backdrop-blur-sm rounded-2xl px-8 py-4 shadow-xl border-2 border-red-200">
+                                <p className="text-2xl text-gray-700 font-bold">
+                                    {count < 5 && "¡Sigue comiendo! 😋"}
+                                    {count >= 5 && count < 10 && "¡Qué apetito! 🤤"}
+                                    {count >= 10 && count < 20 && "¡Eres todo un experto! 🥢"}
+                                    {count >= 20 && "¡NIVEL MAESTRO SUSHI! 🏆✨"}
+                                </p>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<SushiCounter />);
+    </script>
+</body>
+</html>
