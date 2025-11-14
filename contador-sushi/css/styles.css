@@ -1,0 +1,171 @@
+/* ============================================
+   ANIMACIONES Y ESTILOS PERSONALIZADOS
+   ============================================ */
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
+@keyframes bounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-20px); }
+}
+
+@keyframes float {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-15px); }
+}
+
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-5px); }
+    75% { transform: translateX(5px); }
+}
+
+@keyframes celebration {
+    0% { transform: scale(0) rotate(0deg); opacity: 0; }
+    50% { transform: scale(1.2) rotate(180deg); opacity: 1; }
+    100% { transform: scale(1) rotate(360deg); opacity: 1; }
+}
+
+@keyframes confetti {
+    0% { transform: translateY(0) rotate(0deg); opacity: 1; }
+    100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
+}
+
+@keyframes winner-glow {
+    0%, 100% { box-shadow: 0 0 20px rgba(255, 215, 0, 0.5); }
+    50% { box-shadow: 0 0 40px rgba(255, 215, 0, 0.9), 0 0 60px rgba(255, 215, 0, 0.6); }
+}
+
+@keyframes tie-pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+}
+
+@keyframes rainbow {
+    0% { filter: hue-rotate(0deg); }
+    100% { filter: hue-rotate(360deg); }
+}
+
+@keyframes eye-blink {
+    0%, 90%, 100% { transform: scaleY(1); }
+    95% { transform: scaleY(0.1); }
+}
+
+@keyframes wiggle {
+    0%, 100% { transform: rotate(0deg); }
+    25% { transform: rotate(-3deg); }
+    75% { transform: rotate(3deg); }
+}
+
+@keyframes bounce-gentle {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-5px); }
+}
+
+@keyframes rotate-3d {
+    0%, 100% { transform: perspective(500px) rotateY(0deg) rotateX(5deg); }
+    50% { transform: perspective(500px) rotateY(5deg) rotateX(0deg); }
+}
+
+/* ============================================
+   CLASES DE ANIMACIÓN
+   ============================================ */
+
+.animate-pulse { 
+    animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; 
+}
+
+.animate-bounce { 
+    animation: bounce 1s infinite; 
+}
+
+.animate-float { 
+    animation: float 3s ease-in-out infinite; 
+}
+
+.animate-shake { 
+    animation: shake 0.3s ease-in-out; 
+}
+
+.animate-celebration { 
+    animation: celebration 1s ease-out; 
+}
+
+.animate-confetti { 
+    animation: confetti 3s linear forwards; 
+}
+
+.animate-winner-glow { 
+    animation: winner-glow 2s ease-in-out infinite; 
+}
+
+.animate-tie-pulse { 
+    animation: tie-pulse 1.5s ease-in-out infinite; 
+}
+
+.animate-rainbow { 
+    animation: rainbow 3s linear infinite; 
+}
+
+.animate-eye-blink { 
+    animation: eye-blink 3s ease-in-out infinite; 
+}
+
+.animate-wiggle { 
+    animation: wiggle 2s ease-in-out infinite; 
+}
+
+.animate-bounce-gentle { 
+    animation: bounce-gentle 2s ease-in-out infinite; 
+}
+
+.animate-rotate-3d { 
+    animation: rotate-3d 4s ease-in-out infinite; 
+}
+
+/* ============================================
+   ESTILOS 3D Y EFECTOS ESPECIALES
+   ============================================ */
+
+.toon-3d {
+    transform-style: preserve-3d;
+    perspective: 1000px;
+}
+
+.shadow-3d {
+    box-shadow: 
+        0 20px 40px rgba(0,0,0,0.3),
+        0 10px 20px rgba(0,0,0,0.2),
+        inset 0 -5px 10px rgba(0,0,0,0.1);
+}
+
+.shadow-3d-light {
+    box-shadow: 
+        0 15px 30px rgba(0,0,0,0.25),
+        0 5px 15px rgba(0,0,0,0.15),
+        inset 0 2px 5px rgba(255,255,255,0.5);
+}
+
+/* ============================================
+   DELAYS DE ANIMACIÓN
+   ============================================ */
+
+.delay-100 { 
+    animation-delay: 0.1s; 
+}
+
+.delay-200 { 
+    animation-delay: 0.2s; 
+}
+
+.delay-300 { 
+    animation-delay: 0.3s; 
+}
+
+.delay-500 { 
+    animation-delay: 0.5s; 
+}
+
