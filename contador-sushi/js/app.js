@@ -496,7 +496,7 @@ const MainMenu = ({ onSelectMode }) => (
                 className="bg-gradient-to-r from-red-500 to-orange-500 hover:from-red-600 hover:to-orange-600 text-white font-bold py-8 px-12 rounded-3xl text-3xl transition-all transform hover:scale-105 shadow-2xl flex items-center justify-center gap-4"
             >
                 <span className="text-5xl">🍣</span>
-                <span>Modo Solo</span>
+                <span>Modo Solitario</span>
             </button>
 
             <button
