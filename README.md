@@ -33,13 +33,6 @@ Para que funcione correctamente con archivos externos, necesitas un servidor web
 # Con Python 3
 python -m http.server 8000
 
-# Con Node.js (http-server)
-npx http-server
-
-# Con PHP
-php -S localhost:8000
-```
-
 Luego abre en el navegador: `http://localhost:8000`
 
 ### Opción 2: Abrir directamente
@@ -81,4 +74,3 @@ El proyecto está organizado en:
 - **JavaScript**: Toda la lógica de la aplicación React
 
 Para modificar el código, edita los archivos correspondientes en sus carpetas.
-
