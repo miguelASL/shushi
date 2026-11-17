@@ -1,3 +1,70 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+:root {
+  --ink: #1a1a1a;
+  --salmon: #ff6b4a;
+  --salmon-deep: #e84f2f;
+  --nori: #1f4d3a;
+  --nori-light: #2d6b52;
+  --rice: #fff8f0;
+  --washi: #f4ebe0;
+  --mist: #e8ddd0;
+  --gold: #e8a838;
+  --focus: #ff6b4a;
+}
+
+@layer base {
+  html {
+    @apply antialiased;
+  }
+
+  body {
+    @apply m-0 min-h-screen font-body text-ink bg-washi;
+    background-image:
+      radial-gradient(ellipse 80% 50% at 10% 0%, rgba(255, 107, 74, 0.12), transparent 55%),
+      radial-gradient(ellipse 70% 45% at 90% 10%, rgba(31, 77, 58, 0.1), transparent 50%),
+      url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+  }
+
+  #root {
+    @apply min-h-screen;
+  }
+
+  :focus-visible {
+    outline: 3px solid var(--focus);
+    outline-offset: 3px;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 rounded-2xl bg-salmon px-8 py-4 font-bold text-white shadow-lift transition
+      hover:bg-salmon-deep active:scale-[0.97] disabled:cursor-not-allowed disabled:bg-mist disabled:text-ink disabled:opacity-40 disabled:shadow-none;
+  }
+
+  .btn-secondary {
+    @apply inline-flex items-center justify-center gap-2 rounded-2xl bg-nori px-6 py-3 font-bold text-rice transition
+      hover:bg-nori-light active:scale-[0.97];
+  }
+
+  .btn-ghost {
+    @apply inline-flex items-center justify-center gap-2 rounded-full bg-ink/10 px-5 py-2 font-semibold text-ink transition
+      hover:bg-ink/15 active:scale-[0.97];
+  }
+
+  .screen-pad {
+    @apply min-h-screen px-4 py-6 sm:px-6 sm:py-8;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
