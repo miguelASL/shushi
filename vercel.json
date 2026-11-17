@@ -1,0 +1,6 @@
+{
+  "installCommand": "npm install --prefix contador-sushi",
+  "buildCommand": "npm run build --prefix contador-sushi",
+  "outputDirectory": "contador-sushi/dist",
+  "framework": "vite"
+}
