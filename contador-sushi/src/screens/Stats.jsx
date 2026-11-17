@@ -85,13 +85,30 @@ export default function Stats({ onBack, muted, onToggleMute }) {
                   <span className="font-semibold text-ink">
                     {h.mode === 'solo'
                       ? `Solo · ${h.counts?.solo ?? 0} piezas`
-                      : `Batalla · ${h.counts?.p1 ?? 0}–${h.counts?.p2 ?? 0}${
-                          h.winner === 0
-                            ? ' (empate)'
+                      : (() => {
+                          const score =
+                            Array.isArray(h.players) && h.players.length
+                              ? h.players.map((p) => p.count).join('–')
+                              : `${h.counts?.p1 ?? 0}–${h.counts?.p2 ?? 0}`;
+                          const winners = Array.isArray(h.winnerIndexes)
+                            ? h.winnerIndexes
                             : h.winner
-                              ? ` · gana ${h.names?.[`p${h.winner}`] || `P${h.winner}`}`
-                              : ''
-                        }`}
+                              ? [h.winner - 1]
+                              : [];
+                          const winnerLabel =
+                            winners.length === 1
+                              ? ` · gana ${
+                                  h.players?.[winners[0]]?.name ||
+                                  h.names?.[`p${winners[0] + 1}`] ||
+                                  `P${winners[0] + 1}`
+                                }`
+                              : winners.length > 1
+                                ? ' (empate)'
+                                : h.winner === 0
+                                  ? ' (empate)'
+                                  : '';
+                          return `Batalla · ${score}${winnerLabel}`;
+                        })()}
                   </span>
                   <span className="text-ink/45">{formatWhen(h.at)}</span>
                 </li>

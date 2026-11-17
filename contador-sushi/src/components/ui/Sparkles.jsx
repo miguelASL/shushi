@@ -1,7 +1,8 @@
-export default function Sparkles({ className = '', size = 24 }) {
+export default function Sparkles({ className = '', size = 24, style }) {
   return (
     <svg
       className={className}
+      style={style}
       width={size}
       height={size}
       viewBox="0 0 24 24"

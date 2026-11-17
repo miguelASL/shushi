@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { SUSHI_TYPES } from '../data/sushiTypes';
 import { getStreakMessage, STREAK_WINDOW_MS } from '../data/streakMessages';
 import SushiCharacter from '../components/SushiCharacter';
@@ -12,6 +12,8 @@ import { SoundSystem } from '../lib/soundSystem';
 import { StatsSystem } from '../lib/statsSystem';
 
 const MILESTONES = [5, 10, 15, 20, 30, 50];
+const MIN_PLAYERS = 2;
+const MAX_PLAYERS = 4;
 
 const END_QUIPS = [
   '¡Se acabó el sushi… por ahora!',
@@ -20,14 +22,102 @@ const END_QUIPS = [
   '¡Tabla limpia! A revisar el marcador.',
 ];
 
+const PLAYER_META = [
+  {
+    color: '#2F6FED',
+    ring: 'ring-[#2F6FED]/40',
+    border: 'border-[#2F6FED]/40',
+    focus: 'focus:border-[#2F6FED]',
+    text: 'text-[#2F6FED]',
+    bgWin: 'bg-[#2F6FED]',
+    bar: 'bg-[#2F6FED]',
+    accent: 'blue',
+    bumpKey: 'a',
+    undoKey: 'z',
+    keysLabel: 'A / Z',
+    variant: 'player1',
+  },
+  {
+    color: '#FF6B4A',
+    ring: 'ring-salmon/40',
+    border: 'border-salmon/40',
+    focus: 'focus:border-salmon',
+    text: 'text-salmon',
+    bgWin: 'bg-salmon',
+    bar: 'bg-salmon',
+    accent: 'salmon',
+    bumpKey: 's',
+    undoKey: 'x',
+    keysLabel: 'S / X',
+    variant: 'player2',
+  },
+  {
+    color: '#1F4D3A',
+    ring: 'ring-nori/40',
+    border: 'border-nori/40',
+    focus: 'focus:border-nori',
+    text: 'text-nori',
+    bgWin: 'bg-nori',
+    bar: 'bg-nori',
+    accent: 'salmon',
+    bumpKey: 'k',
+    undoKey: ',',
+    keysLabel: 'K / ,',
+    variant: 'player3',
+  },
+  {
+    color: '#E8A838',
+    ring: 'ring-gold/40',
+    border: 'border-gold/40',
+    focus: 'focus:border-gold',
+    text: 'text-gold',
+    bgWin: 'bg-gold',
+    bar: 'bg-gold',
+    accent: 'salmon',
+    bumpKey: 'l',
+    undoKey: 'm',
+    keysLabel: 'L / M',
+    variant: 'player4',
+  },
+];
+
+function defaultSlot(index, savedNames = {}) {
+  const key = `p${index + 1}`;
+  return {
+    name: savedNames[key] || `Jugador ${index + 1}`,
+    type: null,
+  };
+}
+
+function getWinners(players) {
+  if (!players.length) return [];
+  const max = Math.max(...players.map((p) => p.count));
+  if (max === 0) return [];
+  return players.map((p, i) => (p.count === max ? i : -1)).filter((i) => i >= 0);
+}
+
 function BattleSetup({ onSelect, onBack, muted, onToggleMute }) {
   const saved = StatsSystem.getStats().playerNames;
-  const [player1Sushi, setPlayer1Sushi] = useState(null);
-  const [player2Sushi, setPlayer2Sushi] = useState(null);
-  const [player1Name, setPlayer1Name] = useState(saved.p1);
-  const [player2Name, setPlayer2Name] = useState(saved.p2);
+  const [slots, setSlots] = useState(() => [
+    defaultSlot(0, saved),
+    defaultSlot(1, saved),
+  ]);
 
-  const canStart = player1Sushi && player2Sushi;
+  const canStart = slots.length >= MIN_PLAYERS && slots.every((s) => s.type);
+
+  const updateSlot = (index, patch) => {
+    setSlots((prev) => prev.map((s, i) => (i === index ? { ...s, ...patch } : s)));
+  };
+
+  const addPlayer = () => {
+    if (slots.length >= MAX_PLAYERS) return;
+    setSlots((prev) => [...prev, defaultSlot(prev.length, saved)]);
+  };
+
+  const removePlayer = (index) => {
+    if (slots.length <= MIN_PLAYERS) return;
+    setSlots((prev) => prev.filter((_, i) => i !== index));
+  };
 
   return (
     <ScreenShell className="items-center">
@@ -36,53 +126,71 @@ function BattleSetup({ onSelect, onBack, muted, onToggleMute }) {
         ← Volver
       </button>
 
-      <div className="mx-auto mt-14 w-full max-w-5xl animate-menu-in">
+      <div className="mx-auto mt-14 w-full max-w-6xl animate-menu-in">
         <h1 className="mb-2 text-center font-display text-3xl text-ink sm:text-4xl">Batalla</h1>
-        <p className="mb-8 text-center text-ink/60">Elige nombres y sushi. Contad a vuestro ritmo.</p>
+        <p className="mb-4 text-center text-ink/60">
+          De 2 a 4 jugadores. Contad a vuestro ritmo.
+        </p>
 
-        <div className="grid gap-8 lg:grid-cols-[1fr_auto_1fr] lg:items-start">
-          <div className="rounded-3xl bg-rice/70 p-4 shadow-soft">
-            <h2 className="mb-3 text-center text-xl font-extrabold text-[#2F6FED]">Jugador 1</h2>
-            <label className="sr-only" htmlFor="p1-name">
-              Nombre jugador 1
-            </label>
-            <input
-              id="p1-name"
-              value={player1Name}
-              maxLength={20}
-              onChange={(e) => setPlayer1Name(e.target.value)}
-              className="mb-4 w-full rounded-xl border-2 border-[#2F6FED]/40 bg-white px-3 py-2 text-center font-bold text-ink focus:border-[#2F6FED] focus:outline-none"
-            />
-            <SushiPicker
-              selected={player1Sushi}
-              onSelect={setPlayer1Sushi}
-              accent="blue"
-              columns="grid-cols-2"
-            />
-          </div>
+        <div className="mb-6 flex flex-wrap items-center justify-center gap-2">
+          <span className="text-sm font-bold text-ink/50">{slots.length} jugadores</span>
+          <Button
+            variant="ghost"
+            className="text-sm"
+            disabled={slots.length >= MAX_PLAYERS}
+            onClick={addPlayer}
+          >
+            + Añadir jugador
+          </Button>
+        </div>
 
-          <div className="hidden items-center justify-center font-display text-3xl text-ink/30 lg:flex">
-            VS
-          </div>
-
-          <div className="rounded-3xl bg-rice/70 p-4 shadow-soft">
-            <h2 className="mb-3 text-center text-xl font-extrabold text-salmon">Jugador 2</h2>
-            <label className="sr-only" htmlFor="p2-name">
-              Nombre jugador 2
-            </label>
-            <input
-              id="p2-name"
-              value={player2Name}
-              maxLength={20}
-              onChange={(e) => setPlayer2Name(e.target.value)}
-              className="mb-4 w-full rounded-xl border-2 border-salmon/40 bg-white px-3 py-2 text-center font-bold text-ink focus:border-salmon focus:outline-none"
-            />
-            <SushiPicker
-              selected={player2Sushi}
-              onSelect={setPlayer2Sushi}
-              columns="grid-cols-2"
-            />
-          </div>
+        <div
+          className={`grid gap-4 ${
+            slots.length === 2
+              ? 'md:grid-cols-2'
+              : slots.length === 3
+                ? 'md:grid-cols-3'
+                : 'md:grid-cols-2 xl:grid-cols-4'
+          }`}
+        >
+          {slots.map((slot, index) => {
+            const meta = PLAYER_META[index];
+            return (
+              <div key={index} className="rounded-3xl bg-rice/70 p-4 shadow-soft">
+                <div className="mb-3 flex items-center justify-between gap-2">
+                  <h2 className={`text-lg font-extrabold ${meta.text}`}>
+                    Jugador {index + 1}
+                  </h2>
+                  {slots.length > MIN_PLAYERS && (
+                    <button
+                      type="button"
+                      className="text-xs font-semibold text-ink/40 hover:text-salmon"
+                      onClick={() => removePlayer(index)}
+                    >
+                      Quitar
+                    </button>
+                  )}
+                </div>
+                <label className="sr-only" htmlFor={`p${index}-name`}>
+                  Nombre jugador {index + 1}
+                </label>
+                <input
+                  id={`p${index}-name`}
+                  value={slot.name}
+                  maxLength={20}
+                  onChange={(e) => updateSlot(index, { name: e.target.value })}
+                  className={`mb-3 w-full rounded-xl border-2 bg-white px-3 py-2 text-center font-bold text-ink focus:outline-none ${meta.border} ${meta.focus}`}
+                />
+                <p className="mb-2 text-center text-xs text-ink/40">Teclas: {meta.keysLabel}</p>
+                <SushiPicker
+                  selected={slot.type}
+                  onSelect={(type) => updateSlot(index, { type })}
+                  accent={meta.accent}
+                  columns="grid-cols-2"
+                />
+              </div>
+            );
+          })}
         </div>
 
         <div className="mt-8 flex justify-center">
@@ -90,12 +198,12 @@ function BattleSetup({ onSelect, onBack, muted, onToggleMute }) {
             disabled={!canStart}
             className="px-12 text-lg"
             onClick={() =>
-              onSelect({
-                p1: player1Sushi,
-                p2: player2Sushi,
-                name1: player1Name.trim() || 'Jugador 1',
-                name2: player2Name.trim() || 'Jugador 2',
-              })
+              onSelect(
+                slots.map((s, i) => ({
+                  name: (s.name || `Jugador ${i + 1}`).trim().slice(0, 20) || `Jugador ${i + 1}`,
+                  type: s.type,
+                }))
+              )
             }
           >
             ¡Comenzar batalla!
@@ -106,42 +214,101 @@ function BattleSetup({ onSelect, onBack, muted, onToggleMute }) {
   );
 }
 
-function BattleResults({
-  player1Type,
-  player2Type,
-  player1Name,
-  player2Name,
-  player1Count,
-  player2Count,
-  winner,
-  onReset,
-  onBack,
-  muted,
-  onToggleMute,
-}) {
-  useEffect(() => {
-    if (winner === 0) SoundSystem.playTie();
-    else SoundSystem.playWin();
-  }, [winner]);
+function LeadBar({ players }) {
+  const total = players.reduce((sum, p) => sum + p.count, 0);
+  const winners = getWinners(players);
+  const leadText =
+    total === 0
+      ? 'Empate a cero'
+      : winners.length > 1
+        ? `Empate arriba · ${winners.map((i) => players[i].name).join(' / ')}`
+        : `Va ganando ${players[winners[0]].name}`;
 
-  const margin = Math.abs(player1Count - player2Count);
-  const total = player1Count + player2Count;
+  const max = Math.max(...players.map((p) => p.count), 0);
+  const margin =
+    winners.length === 1
+      ? max - Math.max(...players.filter((_, i) => i !== winners[0]).map((p) => p.count), 0)
+      : 0;
+
+  return (
+    <div className="mx-auto mb-6 w-full max-w-2xl">
+      <p className="mb-2 text-center text-sm font-bold text-ink/60" aria-live="polite">
+        {leadText}
+        {margin > 0 && <span className="text-ink/40"> · ventaja {margin}</span>}
+      </p>
+      <div className="flex h-3 overflow-hidden rounded-full bg-mist" role="img" aria-label={leadText}>
+        {players.map((p, i) => {
+          const pct = total === 0 ? 100 / players.length : (p.count / total) * 100;
+          return (
+            <div
+              key={i}
+              className={`h-full transition-all duration-300 ${PLAYER_META[i].bar}`}
+              style={{ width: `${pct}%` }}
+            />
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function BattleEnding({ quip, players }) {
+  return (
+    <ScreenShell className="relative items-center justify-center overflow-hidden">
+      <Confetti active count={36} />
+      <div className="relative z-10 px-4 text-center animate-celebrate">
+        <p className="font-display text-5xl text-ink sm:text-6xl">¡Fin!</p>
+        <p className="mt-3 text-lg font-semibold text-ink/65">{quip}</p>
+        <div className="mt-6 flex flex-wrap items-center justify-center gap-x-2 gap-y-2 font-display text-2xl">
+          {players.map((p, i) => (
+            <span key={i} className="inline-flex items-center">
+              <span className={PLAYER_META[i].text}>
+                {p.name} {p.count}
+              </span>
+              {i < players.length - 1 && <span className="ml-2 text-ink/25">·</span>}
+            </span>
+          ))}
+        </div>
+        <p className="mt-4 text-sm text-ink/45">Preparando el resultado…</p>
+      </div>
+    </ScreenShell>
+  );
+}
+
+function BattleResults({ players, onReset, onBack, muted, onToggleMute }) {
+  const winners = useMemo(() => getWinners(players), [players]);
+  const isTie = winners.length !== 1;
+  const total = players.reduce((sum, p) => sum + p.count, 0);
+  const max = Math.max(...players.map((p) => p.count), 0);
+  const margin =
+    winners.length === 1
+      ? max - Math.max(...players.filter((_, i) => i !== winners[0]).map((p) => p.count), 0)
+      : 0;
+
+  useEffect(() => {
+    if (isTie) SoundSystem.playTie();
+    else SoundSystem.playWin();
+  }, [isTie]);
 
   return (
     <ScreenShell className="relative items-center justify-center overflow-hidden">
       <MuteToggle muted={muted} onToggle={onToggleMute} />
       <Confetti active />
-      <div className="relative z-10 w-full max-w-3xl text-center animate-celebrate">
-        {winner === 0 ? (
+      <div className="relative z-10 w-full max-w-5xl text-center animate-celebrate">
+        {isTie ? (
           <>
             <h1 className="font-display text-4xl text-ink sm:text-5xl">¡Empate!</h1>
-            <p className="mt-2 text-ink/60">Misma hambre, mismo honor</p>
+            <p className="mt-2 text-ink/60">
+              {winners.length > 1
+                ? winners.map((i) => players[i].name).join(' · ')
+                : 'Misma hambre, mismo honor'}
+            </p>
           </>
         ) : (
           <>
             <h1 className="font-display text-4xl text-ink sm:text-5xl">¡Ganador!</h1>
             <p className="mt-2 text-2xl font-extrabold text-salmon">
-              {winner === 1 ? player1Name : player2Name}
+              {players[winners[0]].name}
             </p>
             {margin > 0 && (
               <p className="mt-1 text-sm font-semibold text-ink/50">
@@ -151,31 +318,35 @@ function BattleResults({
           </>
         )}
         <p className="mt-3 text-sm font-semibold text-ink/45">
-          {total} piezas en total entre los dos
+          {total} piezas en total · {players.length} jugadores
         </p>
 
-        <div className="mt-8 grid gap-6 sm:grid-cols-[1fr_auto_1fr] sm:items-center">
-          <div
-            className={`rounded-3xl p-5 ${
-              winner === 1 ? 'animate-winner-glow bg-[#2F6FED] text-white' : 'bg-rice/80'
-            }`}
-          >
-            <SushiCharacter type={player1Type} size={120} mood={winner === 1 ? 'excited' : 'idle'} />
-            <p className="mt-2 font-bold">{player1Name}</p>
-            <p className="text-sm opacity-70">{SUSHI_TYPES[player1Type].name}</p>
-            <p className="font-display text-5xl">{player1Count}</p>
-          </div>
-          <div className="font-display text-2xl text-ink/30">VS</div>
-          <div
-            className={`rounded-3xl p-5 ${
-              winner === 2 ? 'animate-winner-glow bg-salmon text-white' : 'bg-rice/80'
-            }`}
-          >
-            <SushiCharacter type={player2Type} size={120} mood={winner === 2 ? 'excited' : 'idle'} />
-            <p className="mt-2 font-bold">{player2Name}</p>
-            <p className="text-sm opacity-70">{SUSHI_TYPES[player2Type].name}</p>
-            <p className="font-display text-5xl">{player2Count}</p>
-          </div>
+        <div
+          className={`mt-8 grid gap-4 ${
+            players.length <= 2
+              ? 'sm:grid-cols-2'
+              : players.length === 3
+                ? 'sm:grid-cols-3'
+                : 'sm:grid-cols-2 lg:grid-cols-4'
+          }`}
+        >
+          {players.map((p, i) => {
+            const won = winners.length === 1 && winners[0] === i;
+            const meta = PLAYER_META[i];
+            return (
+              <div
+                key={i}
+                className={`rounded-3xl p-5 ${
+                  won ? `animate-winner-glow text-white ${meta.bgWin}` : 'bg-rice/80'
+                }`}
+              >
+                <SushiCharacter type={p.type} size={110} mood={won ? 'excited' : 'idle'} />
+                <p className="mt-2 font-bold">{p.name}</p>
+                <p className="text-sm opacity-70">{SUSHI_TYPES[p.type]?.name}</p>
+                <p className="font-display text-4xl">{p.count}</p>
+              </div>
+            );
+          })}
         </div>
 
         <div className="mt-8 flex flex-wrap justify-center gap-3">
@@ -189,75 +360,15 @@ function BattleResults({
   );
 }
 
-function LeadBar({ p1, p2, name1, name2 }) {
-  const total = p1 + p2;
-  const p1Pct = total === 0 ? 50 : Math.round((p1 / total) * 100);
-  const lead =
-    p1 === p2 ? 'Empate' : p1 > p2 ? `Va ganando ${name1}` : `Va ganando ${name2}`;
-
-  return (
-    <div className="mx-auto mb-6 w-full max-w-xl">
-      <p className="mb-2 text-center text-sm font-bold text-ink/60" aria-live="polite">
-        {lead}
-        {p1 !== p2 && (
-          <span className="text-ink/40"> · diferencia {Math.abs(p1 - p2)}</span>
-        )}
-      </p>
-      <div className="flex h-3 overflow-hidden rounded-full bg-mist" role="img" aria-label={lead}>
-        <div
-          className="h-full bg-[#2F6FED] transition-all duration-300"
-          style={{ width: `${p1Pct}%` }}
-        />
-        <div
-          className="h-full bg-salmon transition-all duration-300"
-          style={{ width: `${100 - p1Pct}%` }}
-        />
-      </div>
-    </div>
-  );
-}
-
-function BattleEnding({ quip, p1, p2, name1, name2 }) {
-  return (
-    <ScreenShell className="relative items-center justify-center overflow-hidden">
-      <Confetti active count={36} />
-      <div className="relative z-10 text-center animate-celebrate">
-        <p className="font-display text-5xl text-ink sm:text-6xl">¡Fin!</p>
-        <p className="mt-3 text-lg font-semibold text-ink/65">{quip}</p>
-        <p className="mt-6 font-display text-3xl text-ink/80">
-          <span className="text-[#2F6FED]">{name1} {p1}</span>
-          <span className="mx-3 text-ink/30">·</span>
-          <span className="text-salmon">{name2} {p2}</span>
-        </p>
-        <p className="mt-4 text-sm text-ink/45">Preparando el resultado…</p>
-      </div>
-    </ScreenShell>
-  );
-}
-
 export default function Battle({ onBack, muted, onToggleMute }) {
   const [stage, setStage] = useState('select');
-  const [player1Type, setPlayer1Type] = useState(null);
-  const [player2Type, setPlayer2Type] = useState(null);
-  const [player1Name, setPlayer1Name] = useState('Jugador 1');
-  const [player2Name, setPlayer2Name] = useState('Jugador 2');
-  const [player1Count, setPlayer1Count] = useState(0);
-  const [player2Count, setPlayer2Count] = useState(0);
-  const [mood1, setMood1] = useState('idle');
-  const [mood2, setMood2] = useState('idle');
-  const [spark1, setSpark1] = useState(false);
-  const [spark2, setSpark2] = useState(false);
-  const [streak1, setStreak1] = useState(0);
-  const [streak2, setStreak2] = useState(0);
+  const [players, setPlayers] = useState([]);
   const [battleActive, setBattleActive] = useState(true);
   const [flash, setFlash] = useState('');
   const [endQuip, setEndQuip] = useState('');
   const finishedRef = useRef(false);
-  const countsRef = useRef({ p1: 0, p2: 0 });
-  const streakRef = useRef({ p1: 0, p2: 0, t1: 0, t2: 0 });
-
-  const winner =
-    player1Count > player2Count ? 1 : player2Count > player1Count ? 2 : 0;
+  const countsRef = useRef([]);
+  const streakRef = useRef([]);
 
   const showFlash = (text) => {
     setFlash(text);
@@ -269,21 +380,26 @@ export default function Battle({ onBack, muted, onToggleMute }) {
     if (finishedRef.current) return;
     finishedRef.current = true;
     setBattleActive(false);
-    const { p1, p2 } = countsRef.current;
-    const w = p1 > p2 ? 1 : p2 > p1 ? 2 : 0;
+
+    const snapshot = players.map((p, i) => ({
+      ...p,
+      count: countsRef.current[i] ?? p.count,
+    }));
+    const winners = getWinners(snapshot);
     StatsSystem.recordBattle({
-      p1Count: p1,
-      p2Count: p2,
-      p1Type: player1Type,
-      p2Type: player2Type,
-      winner: w,
-      names: { p1: player1Name, p2: player2Name },
+      players: snapshot.map((p) => ({
+        name: p.name,
+        type: p.type,
+        count: p.count,
+      })),
+      winnerIndexes: winners,
     });
+    setPlayers(snapshot);
     setEndQuip(END_QUIPS[Math.floor(Math.random() * END_QUIPS.length)]);
     SoundSystem.playBattleEnd();
     setTimeout(() => SoundSystem.playBurp(), 500);
     setStage('ending');
-  }, [player1Type, player2Type, player1Name, player2Name]);
+  }, [players]);
 
   useEffect(() => {
     if (stage !== 'ending') return undefined;
@@ -291,104 +407,88 @@ export default function Battle({ onBack, muted, onToggleMute }) {
     return () => clearTimeout(t);
   }, [stage]);
 
-  const bump = useCallback((player) => {
-    if (!battleActive) return;
-    const now = Date.now();
-    const key = player === 1 ? 'p1' : 'p2';
-    const tKey = player === 1 ? 't1' : 't2';
-    const nextStreak =
-      now - streakRef.current[tKey] <= STREAK_WINDOW_MS
-        ? streakRef.current[key] + 1
-        : 1;
-    streakRef.current[key] = nextStreak;
-    streakRef.current[tKey] = now;
-    if (player === 1) setStreak1(nextStreak);
-    else setStreak2(nextStreak);
+  const bump = useCallback(
+    (index) => {
+      if (!battleActive) return;
+      const now = Date.now();
+      const streakState = streakRef.current[index] || { streak: 0, at: 0 };
+      const nextStreak =
+        now - streakState.at <= STREAK_WINDOW_MS ? streakState.streak + 1 : 1;
+      streakRef.current[index] = { streak: nextStreak, at: now };
 
-    const name = player === 1 ? player1Name : player2Name;
-    const streakMsg = getStreakMessage(nextStreak);
+      setPlayers((prev) => {
+        const next = prev.map((p, i) => {
+          if (i !== index) return p;
+          const count = p.count + 1;
+          countsRef.current[i] = count;
+          const streakMsg = getStreakMessage(nextStreak);
+          if (streakMsg) {
+            SoundSystem.playStreak(nextStreak);
+            showFlash(`${p.name}: ${streakMsg}`);
+          } else if (MILESTONES.includes(count)) {
+            SoundSystem.playMilestone();
+            showFlash(`${p.name}: ¡${count}!`);
+          }
+          return {
+            ...p,
+            count,
+            streak: nextStreak,
+            mood: nextStreak >= 5 ? 'excited' : 'happy',
+            spark: true,
+          };
+        });
+        return next;
+      });
 
-    if (player === 1) {
-      setPlayer1Count((c) => {
-        const next = c + 1;
-        countsRef.current.p1 = next;
-        if (streakMsg) {
-          SoundSystem.playStreak(nextStreak);
-          showFlash(`${name}: ${streakMsg}`);
-        } else if (MILESTONES.includes(next)) {
-          SoundSystem.playMilestone();
-          showFlash(`${name}: ¡${next}!`);
-        }
-        return next;
-      });
-      setMood1(nextStreak >= 5 ? 'excited' : 'happy');
-      setSpark1(true);
-      setTimeout(() => setMood1('idle'), 400);
-      setTimeout(() => setSpark1(false), 650);
-    } else {
-      setPlayer2Count((c) => {
-        const next = c + 1;
-        countsRef.current.p2 = next;
-        if (streakMsg) {
-          SoundSystem.playStreak(nextStreak);
-          showFlash(`${name}: ${streakMsg}`);
-        } else if (MILESTONES.includes(next)) {
-          SoundSystem.playMilestone();
-          showFlash(`${name}: ¡${next}!`);
-        }
-        return next;
-      });
-      setMood2(nextStreak >= 5 ? 'excited' : 'happy');
-      setSpark2(true);
-      setTimeout(() => setMood2('idle'), 400);
-      setTimeout(() => setSpark2(false), 650);
-    }
-    SoundSystem.playEat();
-    if (navigator.vibrate) navigator.vibrate(nextStreak >= 5 ? [10, 30, 10] : 10);
-  }, [battleActive, player1Name, player2Name]);
+      SoundSystem.playEat();
+      if (navigator.vibrate) navigator.vibrate(nextStreak >= 5 ? [10, 30, 10] : 10);
+      window.setTimeout(() => {
+        setPlayers((prev) =>
+          prev.map((p, i) => (i === index ? { ...p, mood: 'idle', spark: false } : p))
+        );
+      }, 450);
+    },
+    [battleActive]
+  );
 
-  const undo = useCallback((player) => {
-    if (!battleActive) return;
-    if (player === 1) {
-      setPlayer1Count((c) => {
-        const next = Math.max(0, c - 1);
-        countsRef.current.p1 = next;
-        return next;
-      });
-      streakRef.current.p1 = 0;
-      streakRef.current.t1 = 0;
-      setStreak1(0);
-    } else {
-      setPlayer2Count((c) => {
-        const next = Math.max(0, c - 1);
-        countsRef.current.p2 = next;
-        return next;
-      });
-      streakRef.current.p2 = 0;
-      streakRef.current.t2 = 0;
-      setStreak2(0);
-    }
-  }, [battleActive]);
+  const undo = useCallback(
+    (index) => {
+      if (!battleActive) return;
+      streakRef.current[index] = { streak: 0, at: 0 };
+      setPlayers((prev) =>
+        prev.map((p, i) => {
+          if (i !== index) return p;
+          const count = Math.max(0, p.count - 1);
+          countsRef.current[i] = count;
+          return { ...p, count, streak: 0 };
+        })
+      );
+    },
+    [battleActive]
+  );
 
   useEffect(() => {
     if (stage !== 'battle' || !battleActive) return undefined;
     const onKey = (e) => {
       if (e.repeat) return;
       const k = e.key.toLowerCase();
-      if (k === 'a') bump(1);
-      if (k === 'l') bump(2);
-      if (k === 'z') undo(1);
-      if (k === 'm') undo(2);
+      players.forEach((_, index) => {
+        const meta = PLAYER_META[index];
+        if (!meta) return;
+        if (k === meta.bumpKey) bump(index);
+        if (k === meta.undoKey) undo(index);
+      });
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [stage, battleActive, bump, undo]);
+  }, [stage, battleActive, players, bump, undo]);
 
   const handleBack = () => {
+    const anyCount = players.some((p) => p.count > 0);
     if (
       stage === 'battle' &&
       battleActive &&
-      (player1Count > 0 || player2Count > 0) &&
+      anyCount &&
       !window.confirm('¿Salir de la batalla? Se perderá el conteo actual.')
     ) {
       return;
@@ -402,19 +502,20 @@ export default function Battle({ onBack, muted, onToggleMute }) {
         muted={muted}
         onToggleMute={onToggleMute}
         onBack={onBack}
-        onSelect={({ p1, p2, name1, name2 }) => {
-          setPlayer1Type(p1);
-          setPlayer2Type(p2);
-          setPlayer1Name(name1);
-          setPlayer2Name(name2);
-          StatsSystem.savePlayerNames(name1, name2);
-          countsRef.current = { p1: 0, p2: 0 };
-          streakRef.current = { p1: 0, p2: 0, t1: 0, t2: 0 };
+        onSelect={(slots) => {
+          const next = slots.map((s) => ({
+            name: s.name,
+            type: s.type,
+            count: 0,
+            streak: 0,
+            mood: 'idle',
+            spark: false,
+          }));
+          StatsSystem.savePlayerNames(next.map((p) => p.name));
+          countsRef.current = next.map(() => 0);
+          streakRef.current = next.map(() => ({ streak: 0, at: 0 }));
           finishedRef.current = false;
-          setPlayer1Count(0);
-          setPlayer2Count(0);
-          setStreak1(0);
-          setStreak2(0);
+          setPlayers(next);
           setBattleActive(true);
           setFlash('');
           setStage('battle');
@@ -424,27 +525,13 @@ export default function Battle({ onBack, muted, onToggleMute }) {
   }
 
   if (stage === 'ending') {
-    return (
-      <BattleEnding
-        quip={endQuip}
-        p1={player1Count}
-        p2={player2Count}
-        name1={player1Name}
-        name2={player2Name}
-      />
-    );
+    return <BattleEnding quip={endQuip} players={players} />;
   }
 
   if (stage === 'finished') {
     return (
       <BattleResults
-        player1Type={player1Type}
-        player2Type={player2Type}
-        player1Name={player1Name}
-        player2Name={player2Name}
-        player1Count={player1Count}
-        player2Count={player2Count}
-        winner={winner}
+        players={players}
         onReset={() => {
           finishedRef.current = false;
           setStage('select');
@@ -457,6 +544,11 @@ export default function Battle({ onBack, muted, onToggleMute }) {
     );
   }
 
+  const winners = getWinners(players);
+  const keysHint = players
+    .map((_, i) => `P${i + 1}: ${PLAYER_META[i].keysLabel}`)
+    .join(' · ');
+
   return (
     <ScreenShell className="items-center">
       <MuteToggle muted={muted} onToggle={onToggleMute} />
@@ -464,102 +556,81 @@ export default function Battle({ onBack, muted, onToggleMute }) {
         ← Volver
       </button>
 
-      <div className="mx-auto mt-12 w-full max-w-4xl">
+      <div className="mx-auto mt-12 w-full max-w-6xl">
         <div className="mb-4 text-center">
           <h1 className="font-display text-3xl text-ink">Batalla</h1>
-          <p className="mt-2 text-sm text-ink/50">
-            Contar: A / L · Deshacer: Z / M
-          </p>
+          <p className="mt-2 text-sm text-ink/50">{keysHint}</p>
         </div>
 
-        <LeadBar
-          p1={player1Count}
-          p2={player2Count}
-          name1={player1Name}
-          name2={player2Name}
-        />
+        <LeadBar players={players} />
 
         {flash && (
-          <p className="mb-4 text-center font-display text-2xl text-nori animate-celebrate" aria-live="polite">
+          <p
+            className="mb-4 text-center font-display text-2xl text-nori animate-celebrate"
+            aria-live="polite"
+          >
             {flash}
           </p>
         )}
 
-        <div className="grid gap-6 sm:grid-cols-[1fr_auto_1fr] sm:items-center">
-          <div
-            className={`flex flex-col items-center rounded-3xl bg-rice/70 p-5 shadow-soft transition ring-4 ${
-              player1Count > player2Count ? 'ring-[#2F6FED]/40' : 'ring-transparent'
-            }`}
-          >
-            <h3 className="text-xl font-extrabold text-[#2F6FED]">{player1Name}</h3>
-            <p className="font-display text-6xl text-[#2F6FED] tabular-nums" aria-live="polite">
-              {player1Count}
-            </p>
-            {streak1 >= 2 && (
-              <p className="text-sm font-extrabold text-gold">Racha x{streak1}</p>
-            )}
-            <div className="relative my-3">
-              {spark1 && <Sparkles className="absolute -left-2 -top-2 text-[#2F6FED] animate-ping" />}
-              <SushiCharacter type={player1Type} size={140} mood={mood1} />
-            </div>
-            <Button
-              variant="player1"
-              className="w-full max-w-[220px] py-5 text-xl"
-              disabled={!battleActive}
-              onClick={() => bump(1)}
-            >
-              +1 Comer
-            </Button>
-            <button
-              type="button"
-              className="btn-ghost mt-2 text-sm"
-              disabled={!battleActive || player1Count === 0}
-              onClick={() => undo(1)}
-              aria-label={`Deshacer último de ${player1Name}`}
-            >
-              −1 Deshacer
-            </button>
-          </div>
-
-          <div className="hidden font-display text-3xl text-ink/25 sm:block">VS</div>
-
-          <div
-            className={`flex flex-col items-center rounded-3xl bg-rice/70 p-5 shadow-soft transition ring-4 ${
-              player2Count > player1Count ? 'ring-salmon/40' : 'ring-transparent'
-            }`}
-          >
-            <h3 className="text-xl font-extrabold text-salmon">{player2Name}</h3>
-            <p className="font-display text-6xl text-salmon tabular-nums" aria-live="polite">
-              {player2Count}
-            </p>
-            {streak2 >= 2 && (
-              <p className="text-sm font-extrabold text-gold">Racha x{streak2}</p>
-            )}
-            <div className="relative my-3">
-              {spark2 && <Sparkles className="absolute -right-2 -top-2 text-salmon animate-ping" />}
-              <SushiCharacter type={player2Type} size={140} mood={mood2} />
-            </div>
-            <Button
-              variant="player2"
-              className="w-full max-w-[220px] py-5 text-xl"
-              disabled={!battleActive}
-              onClick={() => bump(2)}
-            >
-              +1 Comer
-            </Button>
-            <button
-              type="button"
-              className="btn-ghost mt-2 text-sm"
-              disabled={!battleActive || player2Count === 0}
-              onClick={() => undo(2)}
-              aria-label={`Deshacer último de ${player2Name}`}
-            >
-              −1 Deshacer
-            </button>
-          </div>
+        <div
+          className={`grid gap-4 ${
+            players.length === 2
+              ? 'sm:grid-cols-2'
+              : players.length === 3
+                ? 'sm:grid-cols-3'
+                : 'sm:grid-cols-2 lg:grid-cols-4'
+          }`}
+        >
+          {players.map((p, index) => {
+            const meta = PLAYER_META[index];
+            const leading = winners.length === 1 && winners[0] === index;
+            return (
+              <div
+                key={index}
+                className={`flex flex-col items-center rounded-3xl bg-rice/70 p-4 shadow-soft transition ring-4 sm:p-5 ${
+                  leading ? meta.ring : 'ring-transparent'
+                }`}
+              >
+                <h3 className={`text-lg font-extrabold sm:text-xl ${meta.text}`}>{p.name}</h3>
+                <p className={`font-display text-5xl tabular-nums sm:text-6xl ${meta.text}`} aria-live="polite">
+                  {p.count}
+                </p>
+                {p.streak >= 2 && (
+                  <p className="text-sm font-extrabold text-gold">Racha x{p.streak}</p>
+                )}
+                <div className="relative my-2">
+                  {p.spark && (
+                    <Sparkles
+                      className="absolute -left-2 -top-2 animate-ping"
+                      style={{ color: meta.color }}
+                    />
+                  )}
+                  <SushiCharacter type={p.type} size={players.length > 2 ? 110 : 140} mood={p.mood} />
+                </div>
+                <Button
+                  variant={meta.variant}
+                  className="w-full max-w-[200px] py-4 text-lg"
+                  disabled={!battleActive}
+                  onClick={() => bump(index)}
+                >
+                  +1 Comer
+                </Button>
+                <button
+                  type="button"
+                  className="btn-ghost mt-2 text-sm"
+                  disabled={!battleActive || p.count === 0}
+                  onClick={() => undo(index)}
+                  aria-label={`Deshacer último de ${p.name}`}
+                >
+                  −1 Deshacer
+                </button>
+              </div>
+            );
+          })}
         </div>
 
-        {battleActive && (player1Count > 0 || player2Count > 0) && (
+        {battleActive && players.some((p) => p.count > 0) && (
           <div className="mt-8 flex justify-center">
             <Button variant="secondary" onClick={finishBattle}>
               Terminar batalla

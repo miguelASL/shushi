@@ -15,7 +15,12 @@ function defaults() {
     wins: 0,
     bestSolo: 0,
     muted: false,
-    playerNames: { p1: 'Jugador 1', p2: 'Jugador 2' },
+    playerNames: {
+      p1: 'Jugador 1',
+      p2: 'Jugador 2',
+      p3: 'Jugador 3',
+      p4: 'Jugador 4',
+    },
     byType: emptyByType(),
     history: [],
   };
@@ -31,6 +36,8 @@ function normalize(raw) {
     playerNames: {
       p1: raw.playerNames?.p1 || base.playerNames.p1,
       p2: raw.playerNames?.p2 || base.playerNames.p2,
+      p3: raw.playerNames?.p3 || base.playerNames.p3,
+      p4: raw.playerNames?.p4 || base.playerNames.p4,
     },
     history: Array.isArray(raw.history) ? raw.history.slice(0, 20) : [],
   };
@@ -63,11 +70,14 @@ export const StatsSystem = {
     });
   },
 
-  savePlayerNames(p1, p2) {
+  savePlayerNames(names) {
+    const list = Array.isArray(names) ? names : [names?.p1, names?.p2, names?.p3, names?.p4];
     return StatsSystem.update((s) => {
       s.playerNames = {
-        p1: (p1 || 'Jugador 1').slice(0, 20),
-        p2: (p2 || 'Jugador 2').slice(0, 20),
+        p1: (list[0] || 'Jugador 1').slice(0, 20),
+        p2: (list[1] || 'Jugador 2').slice(0, 20),
+        p3: (list[2] || s.playerNames.p3 || 'Jugador 3').slice(0, 20),
+        p4: (list[3] || s.playerNames.p4 || 'Jugador 4').slice(0, 20),
       };
     });
   },
@@ -88,20 +98,29 @@ export const StatsSystem = {
     });
   },
 
-  recordBattle({ p1Count, p2Count, p1Type, p2Type, winner, names }) {
+  recordBattle({ players, winnerIndexes }) {
     return StatsSystem.update((s) => {
-      const total = p1Count + p2Count;
+      const list = players || [];
+      const total = list.reduce((sum, p) => sum + (p.count || 0), 0);
       s.totalSushi += total;
       s.totalBattles += 1;
-      if (winner !== 0) s.wins += 1;
-      if (p1Type && s.byType[p1Type] !== undefined) s.byType[p1Type] += p1Count;
-      if (p2Type && s.byType[p2Type] !== undefined) s.byType[p2Type] += p2Count;
+      const winners = winnerIndexes || [];
+      if (winners.length === 1) s.wins += 1;
+      list.forEach((p) => {
+        if (p.type && s.byType[p.type] !== undefined) s.byType[p.type] += p.count || 0;
+      });
       s.history.unshift({
         mode: 'battle',
-        counts: { p1: p1Count, p2: p2Count },
-        types: { p1: p1Type, p2: p2Type },
-        names,
-        winner,
+        players: list.map((p) => ({
+          name: p.name,
+          type: p.type,
+          count: p.count,
+        })),
+        // legacy fields for old history rows
+        counts: Object.fromEntries(list.map((p, i) => [`p${i + 1}`, p.count])),
+        names: Object.fromEntries(list.map((p, i) => [`p${i + 1}`, p.name])),
+        winner: winners.length === 1 ? winners[0] + 1 : 0,
+        winnerIndexes: winners,
         at: Date.now(),
       });
       s.history = s.history.slice(0, 20);
